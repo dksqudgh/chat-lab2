@@ -1,22 +1,71 @@
-//alert('client.js loaded....')
-//브라우저 개발 도구에서 socket객체를 직접 호출하면 외부에 노출 위험이 있다.
-//즉시 실행 함수로 처리함. - IIFE - 바로 정의해서 호출하는 함수
+//문제제기 
+//네트워크 문제, 서버 의도적인 종료, 클라이언트 의도적인 종료, 프록시 문제, 방화벽 문제
+//끊김 감지하는 코드 작성 >> 자동으로 재연결 >> 안정적으로 서비스 지원 코드를 작성하기
 ;(()=>{
+  let socket = null;
+  let reconnectAttempts = 0;
+  const MAX_RECONNECT_ATTEMPTS = 5;
+  const RECCONNECT_INTERVAL = 3000;
+  const reconnectWebSocket = ()=>{
+    if(MAX_RECONNECT_ATTEMPTS <= reconnectAttempts){
+      console.log('최대 재연결 시도 횟수를 초과했습니다');
+      alert('서버와의 연결이 불안정합니다. 페이지를 새로고침 해주세요')
+      return
+    }
+    console.log('재연결 중입니다...');
+    reconnectAttempts++;
+    try {
+      socket = new WebSocket(`ws://${window.location.host}/ws`);
+      setupWebSockethandlers();
+    } catch (error) {
+      console.error('소켓 재연결 실패:', error);
+      setTimeout(reconnectWebSocket, RECCONNECT_INTERVAL); //setInterval과 다른 점은 3초 후에 딱 한번만 호출함
+    }
+  }
+  const setupWebSockethandlers = () => {
+    socket.onopen = () => {
+      console.log('소켓 연결 성공');
+      reconnectAttempts = 0;
+    }
+    socket.onclose = () => { 
+      console.log('소켓 연결 종료');
+      setTimeout(reconnectWebSocket, RECCONNECT_INTERVAL);
+    }
+    socket.onerror = (error) => {
+      console.log('소켓 연결 에러',error);
+    }
+    socket.addEventListener('message',handleMessage)
+  }
+  const handleMessage = (event)=>{
+    const {type, payload} = JSON.parse(event.data);
+    if(type === 'sync') {
+        const { talks:syncChats } = payload;
+        Object.keys(syncChats).map(key =>{
+          chats.push(syncChats[key].payload)
+        })
+    }else if(type === 'talk'){
+      const talk = payload;
+      console.log(talk);
+      chats.push(talk);
+      console.log(chats);
+    }
+    drawChats();
+  }
+  
   let myNickname = prompt('닉네임을 입력하세요','default')
   const title = document.querySelector('#title')
   if(myNickname != null){
-    title.innerHTML = `{{${myNickname}}}님의 예약 상담`
+    title.innerHTML = `'${myNickname}' 님의 예약 상담`
   }
-  const socket = new WebSocket(`ws://${window.location.host}/ws`)
+  socket = new WebSocket(`ws://${window.location.host}/ws`)
+  setupWebSockethandlers();
+
+
+
   const formEl = document.querySelector('#form')
   const inputEl = document.querySelector('#input')
   const chatsEl = document.querySelector('#chats')
-  
-  
-  
-  
-  
-  
+  const exitBtn = document.querySelector('#exit')
   if(!formEl || !inputEl || !chatsEl){ // | 나 || 결과는 같다 차이는 첫조건이 false일때 |는 뒤에도 확인하고 ||는 뒤에는 확인 안한다.
     throw new Error('formEl or inputEl or chatsEl is null')
   }
@@ -37,6 +86,14 @@
       inputEl.value = '' //입력창 비우기(후처리)
     })
 
+    exitBtn.addEventListener('click',(e)=>{
+      e.defaultPrevented
+      alert('상담을 종료합니다.')
+      socket.onclose();
+      window.location.href = '/';
+      console.log('종료');
+    })
+
     
     //화면과 로직은 분리한다.
     const drawChats = () => {
@@ -49,43 +106,8 @@
         //바깥쪽 div에 안쪽 div를 추가한다. - appendChild
         chatsEl.appendChild(div);
       })
-    }//end of drawChats
+      chatsEl.scrollTop = chatsEl.scrollHeight;
 
-    //파라미터 자리는 사용자가 입력한 값을 담는 자리이다
-    //누가 넣어주나? 아래 이벤트는 소켓통신이 호출하는 콜백함수이다.
-    //콜백함수는 개발자가 직접 호출하는 것이 아니라 이벤트가 발생했을 때 시스템에서 자동으로 호출된다.
-    socket.addEventListener('message', (event)=> {
-      //아래 조건문에서 사용하는 type은 어디서 가져올까요
-      const { type,payload} = JSON.parse(event.data); //서버에서 보내준 데이터는 JSON.stringify()로 감싸져 있다.
-      /*
-      console.log(type);
-      console.log(payload);
-      console.log(payload.nickname);
-      console.log(payload.time);
-      console.log(payload.message);
-      */
-    
-      if('sync' === type){
-        const { talks:syncedChats } = payload;
-        Object.keys(syncedChats).map(key =>{
-          chats.push(syncedChats[key].payload)
-        })
-      }else if('talk' === type){
-        const talk = payload;
-        console.log(talk);
-        console.log(JSON.stringify(talk));  
-        chats.push(talk);
-        console.log(chats);
-      }
-      
-      chats.push(JSON.parse(event.data))//청취한 메시지를 배열에 담는다.
-      chatsEl.innerHTML = '' //화면 초기화
-      chats.forEach(({nickname, message}) => {//배열에 담긴 여러 메시지를 출력한다
-        const div = document.createElement('div')
-        div.innerText = `${nickname}: ${message}[12:34]`
-        chatsEl.appendChild(div)
-      })//end of event listener
-    })
-    drawChats();
+    }//end of drawChats
 })()
 

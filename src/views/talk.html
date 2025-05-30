@@ -9,7 +9,15 @@
 <body>
     <h1 id="title" class="bg-gradient-to-r from-purple-100 to-gray-200 p-16 text-4xl font-bold">키위 - TALK</h1>
     <div class="p-16 space-y-8">
-        <div id=chats class="bg-gray-100 p-2">채팅 목록</div>
+    
+        <div class="flex gap-4">
+            <div id="participants" class="bg-gray-100 p-4 w-48 border border-gray-200 rounded">
+                <h2 class="font-bold mb-2">참여자 목록</h2>
+                <ul id="participants-list" class="space-y-1"></ul>
+            </div>
+            <div id="chats" class="flex-1 bg-gray-100 p-2 h-[400px] overflow-y-auto border border-gray-200 rounded">채팅 목록
+            </div>
+        </div>
         <hr>
         <form id="form" class="space-x-4 flex">
             <input id="input" class="flex-1 border border-gray-200 p-4 rounded" type="text" placeholder="채팅을 입력해 보세요.">
@@ -18,5 +26,14 @@
         </form>
     </div>
     <script src="/public/client.js"></script>
+    <style>
+        #chats {
+            max-height: 280px;
+            overflow-y: auto;
+        }
+    </style>
+
+    
+    
 </body>
 </html>

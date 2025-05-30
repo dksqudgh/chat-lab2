@@ -107,7 +107,7 @@ app.ws.use(
   //ws는 websocket을 의미한다.
   //-> /test/:id로 요청이 오면 아래를 처리하라.
   route.all('/ws', async(ctx) => {
-    const talks = getChatsCollection()
+    const talks = await getChatsCollection()
     console.log(talks);
     //console.log('talk : ' + talks);
     ctx.websocket.send(JSON.stringify({
@@ -145,7 +145,7 @@ app.ws.use(
         payload: {
           nickname: nickname,
           message: message,
-          time: time
+          time: time,
         }
         //여기까지 진행이 되었다면
       });
